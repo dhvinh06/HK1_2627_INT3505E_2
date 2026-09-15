@@ -110,6 +110,45 @@ Connection: close
 
 _next sửa thành 2 vì có sẵn id 1 trong code mẫu, nếu _next =1 thì sẽ có 2 book có id là 1
 
+(.venv) PS D:\Project 2026 java\SOA> curl.exe -i -X POST http://127.0.0.1:5000/books -H "Content-Type: application/json" -d '{\"title\":\"X\"}'                         
+HTTP/1.1 400 BAD REQUEST
+Server: Werkzeug/3.1.8 Python/3.14.0
+Date: Tue, 15 Sep 2026 08:18:49 GMT
+Content-Type: application/json
+Content-Length: 35
+Connection: close
+
+{
+"error": "need title+author"
+}
+
+
+(.venv) PS D:\Project 2026 java\SOA> curl.exe -i http://127.0.0.1:5000/books/99
+HTTP/1.1 404 NOT FOUND
+Server: Werkzeug/3.1.8 Python/3.14.0
+Date: Tue, 15 Sep 2026 08:20:12 GMT
+Content-Type: application/json
+Content-Length: 27
+Connection: close
+
+{
+"error": "not found"
+}
+
+(.venv) PS D:\Project 2026 java\SOA> curl.exe --% -i -X PUT http://127.0.0.1:5000/books/1 -H "Content-Type: application/json" -d "{\"title\": \"DDIA 2nd ed.\"}"
+HTTP/1.1 200 OK
+Server: Werkzeug/3.1.8 Python/3.14.0
+Date: Tue, 15 Sep 2026 08:32:50 GMT
+Content-Type: application/json
+Content-Length: 66
+Connection: close
+
+{
+"author": "R. Martin",
+"id": 1,
+"title": "DDIA 2nd ed."
+}
+
 
 
 
