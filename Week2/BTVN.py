@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, request, g
 import sqlite3
-import hashlib
 
 app = Flask(__name__)
 
@@ -21,47 +20,22 @@ def close_db(exception):
         db.close()
 
 
-def compute_etag(data):
-    raw = f"{data['title']}|{data['author']}|{data['year']}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def serialize(row):
-    d = dict(row)
-    d.pop("etag", None)  # etag chỉ lộ ra qua header, không lộ trong body
-    return d
-
-
 def init_db():
     conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
     conn.execute("""
                  CREATE TABLE IF NOT EXISTS books (
                                                       id     INTEGER PRIMARY KEY AUTOINCREMENT,
                                                       title  TEXT NOT NULL,
                                                       author TEXT NOT NULL,
-                                                      year   INTEGER NOT NULL,
-                                                      etag   TEXT
+                                                      year   INTEGER NOT NULL
                  )
                  """)
-
-    # migration cho books.db cũ chưa có cột etag
-    cols = [r["name"] for r in conn.execute("PRAGMA table_info(books)").fetchall()]
-    if "etag" not in cols:
-        conn.execute("ALTER TABLE books ADD COLUMN etag TEXT")
-
     count = conn.execute("SELECT COUNT(*) FROM books").fetchone()[0]
     if count == 0:
         conn.execute(
             "INSERT INTO books (title, author, year) VALUES (?, ?, ?)",
             ("Clean Code", "R. Martin", 2008)
         )
-
-    # backfill etag cho record cũ / vừa seed chưa có
-    for row in conn.execute("SELECT * FROM books WHERE etag IS NULL").fetchall():
-        etag = compute_etag(row)
-        conn.execute("UPDATE books SET etag = ? WHERE id = ?", (etag, row["id"]))
-
     conn.commit()
     conn.close()
 
@@ -101,26 +75,17 @@ def list_books():
     params.append(limit)
 
     rows = db.execute(sql, params).fetchall()
-    return jsonify([serialize(r) for r in rows]), 200
+    return jsonify([dict(r) for r in rows]), 200
 
 
-# DETAIL — GET /books/<int:id>  — có ETag + If-None-Match
+# DETAIL — GET /books/<int:id>
 @app.route("/books/<int:bid>", methods=["GET"])
 def get_book(bid):
     db = get_db()
     row = db.execute("SELECT * FROM books WHERE id = ?", (bid,)).fetchone()
     if row is None:
         return {"error": "not found"}, 404
-
-    etag_value = f'"{row["etag"]}"'
-    client_etag = request.headers.get("If-None-Match")
-
-    if client_etag == etag_value:
-        return "", 304, {"ETag": etag_value}
-
-    resp = jsonify(serialize(row))
-    resp.headers["ETag"] = etag_value
-    return resp, 200
+    return jsonify(dict(row)), 200
 
 
 # CREATE — POST /books
@@ -135,17 +100,15 @@ def create_book():
     if not t or not a:
         return {"error": "need title+author"}, 400
 
-    etag = compute_etag({"title": t, "author": a, "year": year})
-
     db = get_db()
     cur = db.execute(
-        "INSERT INTO books (title, author, year, etag) VALUES (?, ?, ?, ?)",
-        (t, a, year, etag)
+        "INSERT INTO books (title, author, year) VALUES (?, ?, ?)",
+        (t, a, year)
     )
     db.commit()
     new_id = cur.lastrowid
     row = db.execute("SELECT * FROM books WHERE id = ?", (new_id,)).fetchone()
-    return jsonify(serialize(row)), 201, {"Location": f"/books/{new_id}"}
+    return jsonify(dict(row)), 201, {"Location": f"/books/{new_id}"}
 
 
 # UPDATE — PUT, DELETE — DELETE
@@ -165,19 +128,14 @@ def modify_book(bid):
 
         allowed_fields = {"title", "author", "year"}
         updates = {k: v for k, v in body.items() if k in allowed_fields}
-
         if updates:
-            merged = dict(row)
-            merged.update(updates)
-            updates["etag"] = compute_etag(merged)  # recompute vì content đổi
-
             set_clause = ", ".join(f"{k} = ?" for k in updates)
             params = list(updates.values()) + [bid]
             db.execute(f"UPDATE books SET {set_clause} WHERE id = ?", params)
             db.commit()
 
         updated = db.execute("SELECT * FROM books WHERE id = ?", (bid,)).fetchone()
-        return jsonify(serialize(updated)), 200
+        return jsonify(dict(updated)), 200
 
     db.execute("DELETE FROM books WHERE id = ?", (bid,))
     db.commit()
