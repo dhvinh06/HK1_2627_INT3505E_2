@@ -1,4 +1,4 @@
-# app.py — bài 1: GET /books, POST /books
+# ErrorHandler.py — bài 1: GET /books, POST /books
 from flask import Flask, jsonify, request, make_response
 
 app = Flask(__name__)
