@@ -1,189 +1,120 @@
-from flask import Flask, jsonify, request, g
-import sqlite3
-import hashlib
+# app.py — bài 1: GET /books, POST /books
+from flask import Flask, jsonify, request, make_response
 
 app = Flask(__name__)
-
-DB_PATH = "books.db"
-
-
-def get_db():
-    if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-    return g.db
+BOOKS = []
+_next_id = 1
+DEFAULT_SIZE, MAX_SIZE = 20, 100
 
 
-@app.teardown_appcontext
-def close_db(exception):
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
 
-
-def compute_etag(data):
-    raw = f"{data['title']}|{data['author']}|{data['year']}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def serialize(row):
-    d = dict(row)
-    d.pop("etag", None)  # etag chỉ lộ ra qua header, không lộ trong body
-    return d
-
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("""
-                 CREATE TABLE IF NOT EXISTS books (
-                                                      id     INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                      title  TEXT NOT NULL,
-                                                      author TEXT NOT NULL,
-                                                      year   INTEGER NOT NULL,
-                                                      etag   TEXT
-                 )
-                 """)
-
-    # migration cho books.db cũ chưa có cột etag
-    cols = [r["name"] for r in conn.execute("PRAGMA table_info(books)").fetchall()]
-    if "etag" not in cols:
-        conn.execute("ALTER TABLE books ADD COLUMN etag TEXT")
-
-    count = conn.execute("SELECT COUNT(*) FROM books").fetchone()[0]
-    if count == 0:
-        conn.execute(
-            "INSERT INTO books (title, author, year) VALUES (?, ?, ?)",
-            ("Clean Code", "R. Martin", 2008)
-        )
-
-    # backfill etag cho record cũ / vừa seed chưa có
-    for row in conn.execute("SELECT * FROM books WHERE etag IS NULL").fetchall():
-        etag = compute_etag(row)
-        conn.execute("UPDATE books SET etag = ? WHERE id = ?", (etag, row["id"]))
-
-    conn.commit()
-    conn.close()
-
-
-def validate_year(value):
-    if value is None:
-        return False, "year là bắt buộc"
-    if not isinstance(value, int) or isinstance(value, bool):
-        return False, "year phải là số nguyên"
-    if value < 1900:
-        return False, "year phải >= 1900"
-    return True, None
-
-
-# LIST — GET /books
-@app.route("/books", methods=["GET"])
+# ─── GET /books —— trả danh sách
+@app.get("/books")
 def list_books():
-    db = get_db()
-    q = request.args.get("q", "").strip().lower()
-    sort = request.args.get("sort", "").strip()
-    limit = int(request.args.get("limit", 100))
-
-    sql = "SELECT * FROM books"
-    params = []
-    if q:
-        sql += " WHERE LOWER(title) LIKE ?"
-        params.append(f"%{q}%")
-
-    allowed_fields = {"id", "title", "author", "year"}
-    if sort:
-        reverse = sort.startswith("-")
-        field = sort[1:] if reverse else sort
-        if field in allowed_fields:
-            sql += f" ORDER BY {field} {'DESC' if reverse else 'ASC'}"
-
-    sql += " LIMIT ?"
-    params.append(limit)
-
-    rows = db.execute(sql, params).fetchall()
-    return jsonify([serialize(r) for r in rows]), 200
-
-
-# DETAIL — GET /books/<int:id>  — có ETag + If-None-Match
-@app.route("/books/<int:bid>", methods=["GET"])
-def get_book(bid):
-    db = get_db()
-    row = db.execute("SELECT * FROM books WHERE id = ?", (bid,)).fetchone()
-    if row is None:
-        return {"error": "not found"}, 404
-
-    etag_value = f'"{row["etag"]}"'
-    client_etag = request.headers.get("If-None-Match")
-
-    if client_etag == etag_value:
-        return "", 304, {"ETag": etag_value}
-
-    resp = jsonify(serialize(row))
-    resp.headers["ETag"] = etag_value
-    return resp, 200
+    try:
+        page = int(request.args.get("page", 1))
+        size = int(request.args.get("size", DEFAULT_SIZE))
+    except ValueError:
+        return jsonify(error="page and size must be int"), 400
+    page = max(page, 1)
+    size = max(min(size, MAX_SIZE), 1)
+    flt = BOOKS
+    a = request.args.get("author")
+    if a: flt = [b for b in flt if b["author"].lower()==a.lower()]
+    q = (request.args.get("q")or"").lower()
+    if q: flt = [b for b in flt if q in b["title"].lower()]
+    total = len(flt)
+    start=(page-1)*size
+    end=start+size
+    items = flt[start:end]
+    last=(total+size-1)//size
+# HATEOAS links
+    def u(p):
+        return f"/books?page={p}&size={size}"
+    links = {"self":{"href":u(page)},
+             "first":{"href":u(1)},
+             "last":{"href":u(max(last,1))}}
+    if page > 1:
+        links["prev"]={"href":u(page-1)}
+    if end < total:
+        links["next"]={"href":u(page+1)}
+    body = {"data":items,
+            "pagination":{"page":page,"size":size,"total":total,"total_pages":last},
+            "_links":links}
+    resp = make_response(jsonify(body), 200)
+    resp.headers["Cache-Control"]="public, max-age=30"
+    return resp
 
 
-# CREATE — POST /books
-@app.route("/books", methods=["POST"])
+# ─── POST /books —— tạo mới
+@app.post("/books")
 def create_book():
-    body = request.get_json(silent=True) or {}
-    t, a = body.get("title"), body.get("author")
-    year = body.get("year")
-    ok, err = validate_year(year)
-    if not ok:
-        return {"error": err}, 400
+    global _next_id
+    if not request.is_json:
+        return jsonify(error="expected JSON"), 415
+    p = request.get_json(silent=True) or {}
+    t = (p.get("title") or "").strip()
+    a = (p.get("author") or "").strip()
     if not t or not a:
-        return {"error": "need title+author"}, 400
-
-    etag = compute_etag({"title": t, "author": a, "year": year})
-
-    db = get_db()
-    cur = db.execute(
-        "INSERT INTO books (title, author, year, etag) VALUES (?, ?, ?, ?)",
-        (t, a, year, etag)
-    )
-    db.commit()
-    new_id = cur.lastrowid
-    row = db.execute("SELECT * FROM books WHERE id = ?", (new_id,)).fetchone()
-    return jsonify(serialize(row)), 201, {"Location": f"/books/{new_id}"}
+        return jsonify(error="title and author required"), 422
+    book = {"id": _next_id, "title": t, "author": a}
+    BOOKS.append(book)
+    _next_id += 1
+    resp = make_response(jsonify(book), 201)
+    resp.headers["Location"] = f"/books/{book['id']}"
+    return resp
 
 
-# UPDATE — PUT, DELETE — DELETE
-@app.route("/books/<int:bid>", methods=["PUT", "DELETE"])
-def modify_book(bid):
-    db = get_db()
-    row = db.execute("SELECT * FROM books WHERE id = ?", (bid,)).fetchone()
-    if row is None:
-        return {"error": "not found"}, 404
+# ─── GET /books/<id> ─── cache 60s
+@app.get("/books/<int:bid>")
+def fetch(bid):
+    i = next((k for k, b in enumerate(BOOKS) if b["id"] == bid), None)
+    if i is None:
+        return jsonify(error="not found"), 404
+    resp = make_response(jsonify(BOOKS[i]), 200)
+    resp.headers["Cache-Control"] = "max-age=60";
+    return resp
 
-    if request.method == "PUT":
-        body = request.get_json(silent=True) or {}
-        if "year" in body:
-            ok, err = validate_year(body["year"])
-            if not ok:
-                return {"error": err}, 400
 
-        allowed_fields = {"title", "author", "year"}
-        updates = {k: v for k, v in body.items() if k in allowed_fields}
+# ─── PUT ─── thay toàn bộ, title+author bắt buộc
+@app.put("/books/<int:bid>")
+def put(bid):
+    i = next((k for k, b in enumerate(BOOKS) if b["id"] == bid), None)
+    if i is None:
+        return jsonify(error="not found"), 404
+    p = request.get_json(silent=True) or {}
+    t, a = p.get("title"), p.get("author")
+    if not t or not a:
+        return jsonify(error="need title+author"), 422
+    BOOKS[i] = {"id": bid, "title": t.strip(), "author": a.strip(),
+                "isbn": p.get("isbn"), "price": p.get("price")}
+    return jsonify(BOOKS[i]), 200
 
-        if updates:
-            merged = dict(row)
-            merged.update(updates)
-            updates["etag"] = compute_etag(merged)  # recompute vì content đổi
 
-            set_clause = ", ".join(f"{k} = ?" for k in updates)
-            params = list(updates.values()) + [bid]
-            db.execute(f"UPDATE books SET {set_clause} WHERE id = ?", params)
-            db.commit()
+# ─── PATCH ─── chỉ cập nhật field có trong body
+@app.patch("/books/<int:bid>")
+def patch(bid):
+    i = next((k for k, b in enumerate(BOOKS) if b["id"] == bid), None)
+    if i is None:
+        return jsonify(error="not found"), 404
+    p = request.get_json(silent=True) or {}
+    if p.get("price", 0) < 0:
+        return jsonify(error="price must be positive"), 422
+    for k in "title author isbn price".split():
+        if k in p:
+            BOOKS[i][k] = p[k]
+    return jsonify(BOOKS[i]), 200
 
-        updated = db.execute("SELECT * FROM books WHERE id = ?", (bid,)).fetchone()
-        return jsonify(serialize(updated)), 200
 
-    db.execute("DELETE FROM books WHERE id = ?", (bid,))
-    db.commit()
+# ─── DELETE ─── idempotent, trả 204
+@app.delete("/books/<int:bid>")
+def delete(bid):
+    i = next((k for k, b in enumerate(BOOKS)
+        if b["id"] == bid), None)
+    if i is None:
+        return jsonify(error="not found"), 404
+    BOOKS.pop(i)
     return "", 204
 
-
 if __name__ == "__main__":
-    init_db()
     app.run(host="127.0.0.1", port=5000, debug=True)

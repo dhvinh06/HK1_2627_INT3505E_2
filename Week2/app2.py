@@ -34,18 +34,26 @@ def create_book():
 # ─── GET /books/<id> ─── cache 60s
 @app.get("/books/<int:bid>")
 def fetch(bid):
-    i = next((k for k, b in enumerate(BOOKS) if b["id"] == bid), None)
+    i = None
+    for k, b in enumerate(BOOKS):
+        if b["id"] == bid:
+            i = k
+            break
     if i is None:
         return jsonify(error="not found"), 404
     resp = make_response(jsonify(BOOKS[i]), 200)
-    resp.headers["Cache-Control"] = "max-age=60";
+    resp.headers["Cache-Control"] = "max-age=60"
     return resp
 
 
 # ─── PUT ─── thay toàn bộ, title+author bắt buộc
 @app.put("/books/<int:bid>")
 def put(bid):
-    i = next((k for k, b in enumerate(BOOKS) if b["id"] == bid), None)
+    i = None
+    for k, b in enumerate(BOOKS):
+        if b["id"] == bid:
+            i = k
+            break
     if i is None:
         return jsonify(error="not found"), 404
     p = request.get_json(silent=True) or {}
@@ -60,7 +68,11 @@ def put(bid):
 # ─── PATCH ─── chỉ cập nhật field có trong body
 @app.patch("/books/<int:bid>")
 def patch(bid):
-    i = next((k for k, b in enumerate(BOOKS) if b["id"] == bid), None)
+    i = None
+    for k, b in enumerate(BOOKS):
+        if b["id"] == bid:
+            i = k
+            break
     if i is None:
         return jsonify(error="not found"), 404
     p = request.get_json(silent=True) or {}
@@ -75,8 +87,11 @@ def patch(bid):
 # ─── DELETE ─── idempotent, trả 204
 @app.delete("/books/<int:bid>")
 def delete(bid):
-    i = next((k for k, b in enumerate(BOOKS)
-    if b["id"] == bid), None)
+    i = None
+    for k, b in enumerate(BOOKS):
+        if b["id"] == bid:
+            i = k
+            break
     if i is None:
         return jsonify(error="not found"), 404
     BOOKS.pop(i);

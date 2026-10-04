@@ -1,5 +1,6 @@
-from flask import Flask, jsonify, request, g
+from flask import Flask, jsonify, request, g, make_response
 import sqlite3
+import hashlib
 
 app = Flask(__name__)
 
@@ -23,11 +24,25 @@ def close_db(exception):
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("""
-                 CREATE TABLE IF NOT EXISTS books (
-                                                      id     INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                      title  TEXT NOT NULL,
-                                                      author TEXT NOT NULL,
-                                                      year   INTEGER NOT NULL
+                 CREATE TABLE IF NOT EXISTS books
+                 (
+                     id
+                     INTEGER
+                     PRIMARY
+                     KEY
+                     AUTOINCREMENT,
+                     title
+                     TEXT
+                     NOT
+                     NULL,
+                     author
+                     TEXT
+                     NOT
+                     NULL,
+                     year
+                     INTEGER
+                     NOT
+                     NULL
                  )
                  """)
     count = conn.execute("SELECT COUNT(*) FROM books").fetchone()[0]
@@ -85,7 +100,14 @@ def get_book(bid):
     row = db.execute("SELECT * FROM books WHERE id = ?", (bid,)).fetchone()
     if row is None:
         return {"error": "not found"}, 404
-    return jsonify(dict(row)), 200
+    data = f'{row["id"]}-{row["title"]}-{row["author"]}-{row["year"]}'
+    etag = f'"{hashlib.md5(data.encode()).hexdigest()}"'
+    client_etag = request.headers.get("If-None-Match")
+    if client_etag == etag:
+        return "", 304,{"Etag":etag}
+    resp = make_response(jsonify(dict(row)), 200)
+    resp.headers["ETag"] = etag
+    return resp
 
 
 # CREATE — POST /books
