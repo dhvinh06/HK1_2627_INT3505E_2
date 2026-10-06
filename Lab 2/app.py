@@ -1,157 +1,97 @@
-from flask import Flask, jsonify, request, url_for
+import logging
+
+from flask import Flask, jsonify, request
 from werkzeug.exceptions import HTTPException
 
 app = Flask(__name__)
+logger = logging.getLogger(__name__)
 
-posts, next_id = {}, 1
-
-MSG = "title and content must be non-empty strings"
+PROBLEM_JSON = "application/problem+json"
 
 
 class ProblemError(Exception):
-    def __init__(self, title, detail, status):
+    """Lỗi nghiệp vụ, được chuyển thành problem+json."""
+
+    def __init__(self, status, title, detail=None,
+                 type_="about:blank", **extra):
+        super().__init__(title)
+        self.status = status
         self.title = title
         self.detail = detail
-        self.status = status
-        super().__init__(detail)
+        self.type = type_
+        self.extra = extra  # extension members (tuỳ chọn)
+
+
+def problem_response(status, title, detail=None,
+                     type_="about:blank", extra=None, headers=None):
+    body = {
+        "type": type_,
+        "title": title,
+        "detail": detail,
+        "status": status,
+        "instance": request.path,
+    }
+    if extra:
+        body.update(extra)
+
+    resp = jsonify(body)
+    resp.status_code = status
+    resp.mimetype = PROBLEM_JSON
+    for key, value in (headers or []):
+        if key.lower() not in ("content-type", "content-length"):
+            resp.headers[key] = value  # giữ lại Allow, Retry-After, ...
+    return resp
 
 
 @app.errorhandler(ProblemError)
-def handle_problem_error(e):
-    response = jsonify(
-        type="about:blank",
-        title=e.title,
-        detail=e.detail,
-        status=e.status
-    )
-    response.status_code = e.status
-    response.content_type = "application/problem+json"
-    return response
+def handle_problem_error(err):
+    return problem_response(err.status, err.title, err.detail,
+                            err.type, err.extra)
 
 
 @app.errorhandler(HTTPException)
-def handle_http_exception(e):
-    response = jsonify(
-        type="about:blank",
-        title=e.name,
-        detail=e.description,
-        status=e.code
-    )
-    response.status_code = e.code
-    response.content_type = "application/problem+json"
-    return response
+def handle_http_exception(err):
+    # Fallback cho 404 (route không tồn tại), 405, 400, ...
+    return problem_response(
+        err.code or 500,
+        err.name,
+        err.description,
+        headers=err.get_headers(),
+        )
 
 
 @app.errorhandler(Exception)
-def handle_exception(e):
-    # Chi tiết exception chỉ log ở server
-    app.logger.exception("Unhandled exception")
-
-    response = jsonify(
-        type="about:blank",
-        title="Internal Server Error",
-        detail="An unexpected error occurred",
-        status=500
+def handle_unexpected(err):
+    # Log chi tiết (kèm stack trace) phía server, KHÔNG trả ra client
+    logger.exception("Unhandled exception at %s %s",
+                     request.method, request.path)
+    return problem_response(
+        500,
+        "Internal Server Error",
+        "An unexpected error occurred. Please try again later.",
     )
-    response.status_code = 500
-    response.content_type = "application/problem+json"
-    return response
 
 
-def read_body():
-    d = request.get_json(silent=True)
-
-    if not isinstance(d, dict):
-        return None
-
-    t, c = d.get("title"), d.get("content")
-
-    if all(isinstance(x, str) and x.strip() for x in (t, c)):
-        return {
-            "title": t.strip(),
-            "content": c.strip()
-        }
-
-    return None
-
-@app.get("/api/v1/posts")
-def list_posts():
-    return jsonify(list(posts.values()))
+RESOURCES = {1: {"id": 1, "name": "first"}}
 
 
-@app.post("/api/v1/posts")
-def create_post():
-    global next_id
-
-    body = read_body()
-
-    if not body:
+@app.get("/resources/<int:resource_id>")
+def get_resource(resource_id):
+    resource = RESOURCES.get(resource_id)
+    if resource is None:
         raise ProblemError(
-            "Invalid request",
-            MSG,
-            422
+            404,
+            "Resource Not Found",
+            f"Resource with id {resource_id} does not exist.",
+            type_="https://example.com/problems/resource-not-found",
         )
-
-    post = posts[next_id] = {
-        "id": next_id,
-        **body
-    }
-
-    next_id += 1
-
-    return jsonify(post), 201, {
-        "Location": url_for(
-            "get_post",
-            post_id=post["id"]
-        )
-    }
-
-@app.get("/api/v1/posts/<int:post_id>")
-def get_post(post_id):
-    if post_id not in posts:
-        raise ProblemError(
-            "Post not found",
-            "The requested post does not exist",
-            404
-        )
-
-    return jsonify(posts[post_id])
+    return jsonify(resource)
 
 
-@app.put("/api/v1/posts/<int:post_id>")
-def update_post(post_id):
-    if post_id not in posts:
-        raise ProblemError(
-            "Post not found",
-            "The requested post does not exist",
-            404
-        )
-
-    body = read_body()
-
-    if not body:
-        raise ProblemError(
-            "Invalid request",
-            MSG,
-            422
-        )
-
-    posts[post_id].update(body)
-
-    return jsonify(posts[post_id])
-
-
-@app.delete("/api/v1/posts/<int:post_id>")
-def delete_post(post_id):
-    if posts.pop(post_id, None) is None:
-        raise ProblemError(
-            "Post not found",
-            "The requested post does not exist",
-            404
-        )
-
-    return "", 204
+@app.get("/boom")
+def boom():
+    raise RuntimeError("secret internal detail")  #500
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=False)
