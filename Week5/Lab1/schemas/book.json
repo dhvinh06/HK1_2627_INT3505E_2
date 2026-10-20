@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Book (response representation)",
+  "type": "object",
+  "required": ["id", "title", "price"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^book_[a-z0-9]+$"},
+    "title": {"type": "string", "minLength": 1},
+    "isbn": {"type": ["string", "null"], "pattern": "^\\d{13}$"},
+    "category": {
+      "type": ["object", "null"],
+      "properties": {"id": {"type": "integer"}, "slug": {"type": "string"}}
+    },
+    "price": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": {"type": "integer", "minimum": 0},
+        "currency": {"enum": ["VND", "USD", "EUR"]}
+      }
+    },
+    "authors": {"type": "array", "items": {"$ref": "#/$defs/author"}},
+    "inStock": {"type": "boolean"},
+    "createdAt": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "author": {
+      "type": "object",
+      "properties": {
+        "id": {"type": "integer"},
+        "name": {"type": "string"},
+        "role": {"enum": ["lead", "co", "ed"]}
+      }
+    }
+  }
+}

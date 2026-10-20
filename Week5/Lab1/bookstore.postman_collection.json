@@ -1,0 +1,530 @@
+{
+  "info": {
+    "name": "Bookstore API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/v1"
+    },
+    {
+      "key": "bookId",
+      "value": ""
+    },
+    {
+      "key": "isbn",
+      "value": ""
+    },
+    {
+      "key": "cursor",
+      "value": ""
+    },
+    {
+      "key": "page1Ids",
+      "value": ""
+    },
+    {
+      "key": "lastPrice",
+      "value": ""
+    },
+    {
+      "key": "lastTitle",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Books CRUD",
+      "item": [
+        {
+          "name": "Create book",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// isbn phai unique -> sinh ngau nhien moi lan chay",
+                  "const r = String(Math.floor(Math.random() * 1e10)).padStart(10, '0');",
+                  "pm.collectionVariables.set('isbn', '978' + r);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('id dang book_<so>', () => pm.expect(j.id).to.match(/^book_\\d+$/));",
+                  "pm.test('price co currency VND', () => pm.expect(j.price.currency).to.eql('VND'));",
+                  "pm.collectionVariables.set('bookId', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/books",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Clean Code\",\n  \"isbn\": \"{{isbn}}\",\n  \"price\": {\n    \"amount\": 450000,\n    \"currency\": \"VND\"\n  },\n  \"stock\": 3,\n  \"categoryId\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Dung id', () => pm.expect(j.id).to.eql(pm.collectionVariables.get('bookId')));",
+                  "pm.test('Embed category + authors', () => { pm.expect(j.category.slug).to.eql('tech'); pm.expect(j.authors).to.be.an('array'); });",
+                  "pm.test('Khong lo field noi bo', () => { pm.expect(j).to.not.have.property('price_vnd'); pm.expect(j).to.not.have.property('category_id'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books/{{bookId}}"
+          }
+        },
+        {
+          "name": "Replace book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Da doi title va gia', () => { pm.expect(j.title).to.eql('Clean Code 2nd'); pm.expect(j.price.amount).to.eql(500000); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/books/{{bookId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Clean Code 2nd\",\n  \"price\": {\n    \"amount\": 500000\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Authors & Reviews",
+      "item": [
+        {
+          "name": "Add author to book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "pm.test('role = lead', () => pm.expect(pm.response.json().role).to.eql('lead'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/books/{{bookId}}/authors",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 3,\n  \"role\": \"lead\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List book authors",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('Co 1 author id=3', () => { pm.expect(d.length).to.eql(1); pm.expect(d[0].id).to.eql(3); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books/{{bookId}}/authors"
+          }
+        },
+        {
+          "name": "Create review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 201\", () => pm.response.to.have.status(201));",
+                  "const j = pm.response.json();",
+                  "pm.test('rating = 5', () => pm.expect(j.rating).to.eql(5));",
+                  "pm.test('Khong lo email cua user', () => pm.expect(j.user).to.not.have.property('email'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/books/{{bookId}}/reviews",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"rating\": 5,\n  \"comment\": \"Hay\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "pm.test('Co it nhat 1 review', () => pm.expect(pm.response.json().data.length).to.be.at.least(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books/{{bookId}}/reviews"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Pagination, Filter & Sort",
+      "item": [
+        {
+          "name": "List books - offset",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Du 5 items', () => pm.expect(j.data.length).to.eql(5));",
+                  "pm.test('pagination offset day du', () => {",
+                  "  pm.expect(j.pagination.strategy).to.eql('offset');",
+                  "  pm.expect(j.pagination.total).to.be.a('number');",
+                  "  pm.expect(j.pagination.hasMore).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books?strategy=offset&offset=0&limit=5"
+          }
+        },
+        {
+          "name": "List books - cursor trang 1",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Du 5 items + co nextCursor', () => { pm.expect(j.data.length).to.eql(5); pm.expect(j.pagination.nextCursor).to.be.a('string'); });",
+                  "const items = pm.response.json().data;",
+                  "pm.test('Trong trang: price giam dan, cung price thi title tang dan', () => {",
+                  "  for (let i = 1; i < items.length; i++) {",
+                  "    const a = items[i-1], b = items[i];",
+                  "    pm.expect(b.price.amount).to.be.at.most(a.price.amount);",
+                  "    if (b.price.amount === a.price.amount) pm.expect(b.title >= a.title).to.be.true;",
+                  "  }",
+                  "});",
+                  "const last = j.data[j.data.length - 1];",
+                  "pm.collectionVariables.set('cursor', j.pagination.nextCursor);",
+                  "pm.collectionVariables.set('page1Ids', JSON.stringify(j.data.map(b => b.id)));",
+                  "pm.collectionVariables.set('lastPrice', last.price.amount);",
+                  "pm.collectionVariables.set('lastTitle', last.title);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books?limit=5&sort=-price,title"
+          }
+        },
+        {
+          "name": "List books - cursor trang 2",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "const page1 = JSON.parse(pm.collectionVariables.get('page1Ids'));",
+                  "pm.test('Khong trung id voi trang 1', () => j.data.forEach(b => pm.expect(page1).to.not.include(b.id)));",
+                  "const items = pm.response.json().data;",
+                  "pm.test('Trong trang: price giam dan, cung price thi title tang dan', () => {",
+                  "  for (let i = 1; i < items.length; i++) {",
+                  "    const a = items[i-1], b = items[i];",
+                  "    pm.expect(b.price.amount).to.be.at.most(a.price.amount);",
+                  "    if (b.price.amount === a.price.amount) pm.expect(b.title >= a.title).to.be.true;",
+                  "  }",
+                  "});",
+                  "pm.test('Noi tiep dung thu tu sau item cuoi trang 1', () => {",
+                  "  const lp = Number(pm.collectionVariables.get('lastPrice')), lt = pm.collectionVariables.get('lastTitle');",
+                  "  const f = j.data[0];",
+                  "  pm.expect(f.price.amount).to.be.at.most(lp);",
+                  "  if (f.price.amount === lp) pm.expect(f.title >= lt).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books?limit=5&sort=-price,title&cursor={{cursor}}"
+          }
+        },
+        {
+          "name": "List books - genre filter",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('Moi item thuoc genre tech', () => d.forEach(b => pm.expect(b.category.slug).to.eql('tech')));",
+                  "pm.test('price tang dan', () => { for (let i = 1; i < d.length; i++) pm.expect(d[i].price.amount).to.be.at.least(d[i-1].price.amount); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books?genre=tech&sort=price&limit=5"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Errors",
+      "item": [
+        {
+          "name": "Error - bad sort",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test('error = bad_sort', () => pm.expect(pm.response.json().error).to.eql('bad_sort'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books?sort=foo"
+          }
+        },
+        {
+          "name": "Error - cursor khac sort",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "pm.test('error = cursor_mismatch', () => pm.expect(pm.response.json().error).to.eql('cursor_mismatch'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books?sort=price&limit=5&cursor={{cursor}}"
+          }
+        },
+        {
+          "name": "Error - validation POST",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 400\", () => pm.response.to.have.status(400));",
+                  "const j = pm.response.json();",
+                  "pm.test('validation_failed + co field', () => { pm.expect(j.error).to.eql('validation_failed'); pm.expect(j.field).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/books",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"price\": {\n    \"amount\": -1\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Cleanup",
+      "item": [
+        {
+          "name": "Delete author from book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/books/{{bookId}}/authors/3"
+          }
+        },
+        {
+          "name": "Delete book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/books/{{bookId}}"
+          }
+        },
+        {
+          "name": "Get deleted book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 404\", () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/books/{{bookId}}"
+          }
+        }
+      ]
+    }
+  ]
+}
