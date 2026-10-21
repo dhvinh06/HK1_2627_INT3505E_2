@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/hotel-booking.schema.json",
+  "title": "Hotel Booking API - Resource schemas (Hotel, RoomType, Booking)",
+  "description": "Moi resource dinh nghia trong $defs. Truong readOnly do server sinh (khong gui khi POST/PUT). Rang buoc checkOut > checkIn khong bieu dien duoc bang JSON Schema, kiem tra o tang code.",
+  "$defs": {
+    "Money": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "additionalProperties": false,
+      "properties": {
+        "amount": {"type": "integer", "minimum": 0, "description": "So tien nho nhat cua don vi tien te (VND khong co phan le)"},
+        "currency": {"enum": ["VND", "USD", "EUR"]}
+      }
+    },
+    "Address": {
+      "type": "object",
+      "required": ["street", "city", "country"],
+      "additionalProperties": false,
+      "properties": {
+        "street": {"type": "string", "minLength": 1},
+        "city": {"type": "string", "minLength": 1},
+        "country": {"type": "string", "minLength": 2, "maxLength": 2, "description": "ISO 3166-1 alpha-2, vd: VN"},
+        "postalCode": {"type": "string"}
+      }
+    },
+    "Hotel": {
+      "type": "object",
+      "required": ["name", "address", "starRating"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^hotel_[0-9]+$", "readOnly": true},
+        "name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "description": {"type": "string", "maxLength": 5000},
+        "address": {"$ref": "#/$defs/Address"},
+        "starRating": {"type": "integer", "minimum": 1, "maximum": 5},
+        "amenities": {
+          "type": "array",
+          "readOnly": true,
+          "description": "Quan ly qua PUT/DELETE /hotels/{id}/amenities/{amenityId}",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^amn_[0-9]+$"},
+              "name": {"type": "string"}
+            }
+          }
+        },
+        "averageRating": {"type": ["number", "null"], "minimum": 1, "maximum": 5, "readOnly": true, "description": "Computed tu reviews"},
+        "reviewCount": {"type": "integer", "minimum": 0, "readOnly": true},
+        "createdAt": {"type": "string", "format": "date-time", "readOnly": true}
+      }
+    },
+    "RoomType": {
+      "type": "object",
+      "required": ["name", "maxGuests", "pricePerNight", "totalRooms"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^rt_[0-9]+$", "readOnly": true},
+        "hotelId": {"type": "string", "pattern": "^hotel_[0-9]+$", "readOnly": true, "description": "Lay tu path /hotels/{hotelId}/room-types"},
+        "name": {"type": "string", "minLength": 1, "maxLength": 100},
+        "description": {"type": "string", "maxLength": 2000},
+        "maxGuests": {"type": "integer", "minimum": 1, "maximum": 10},
+        "pricePerNight": {"$ref": "#/$defs/Money"},
+        "totalRooms": {"type": "integer", "minimum": 0, "description": "So phong thuc te cua loai nay trong khach san"},
+        "createdAt": {"type": "string", "format": "date-time", "readOnly": true}
+      }
+    },
+    "BookingItem": {
+      "type": "object",
+      "required": ["roomTypeId", "quantity"],
+      "additionalProperties": false,
+      "properties": {
+        "roomTypeId": {"type": "string", "pattern": "^rt_[0-9]+$"},
+        "quantity": {"type": "integer", "minimum": 1, "maximum": 10},
+        "unitPrice": {"$ref": "#/$defs/Money", "readOnly": true, "description": "Snapshot gia/dem tai thoi diem dat"}
+      }
+    },
+    "Booking": {
+      "type": "object",
+      "required": ["guestId", "hotelId", "checkIn", "checkOut", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^bkg_[0-9]+$", "readOnly": true},
+        "guestId": {"type": "string", "pattern": "^guest_[0-9]+$"},
+        "hotelId": {"type": "string", "pattern": "^hotel_[0-9]+$"},
+        "checkIn": {"type": "string", "format": "date"},
+        "checkOut": {"type": "string", "format": "date"},
+        "status": {"enum": ["pending", "confirmed", "cancelled", "completed"], "default": "pending", "description": "Doi bang PATCH /bookings/{id}"},
+        "items": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/BookingItem"}},
+        "totalPrice": {"$ref": "#/$defs/Money", "readOnly": true},
+        "createdAt": {"type": "string", "format": "date-time", "readOnly": true}
+      }
+    }
+  }
+}
