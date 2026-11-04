@@ -1,0 +1,67 @@
+openapi: 3.0.3
+info: { title: Product API, version: 1.0.0 }
+paths:
+  /products:
+    get:
+      operationId: api.products.list_products
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ProductOut' }
+    post:
+      operationId: api.products.create_product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProductIn' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductOut' }
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /products/{id}:
+    get:
+      operationId: api.products.get_product
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductOut' }
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+components:
+  schemas:
+    ProductIn:
+      type: object
+      required: [ name, price_cents]
+      properties:
+        name:        { type: string, minLength: 1, maxLength: 255 }
+        price_cents: { type: integer, minimum: 0 }
+    ProductOut:
+      type: object
+      properties:
+        id:          { type: integer }
+        name:        { type: string }
+        price_cents: { type: integer }
+    Error:
+      type: object
+      properties:
+        error:  { type: string }
+        detail: { type: string }
