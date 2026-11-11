@@ -6,6 +6,7 @@
       <sourceFolder url="file://$MODULE_DIR$/Week7/product-api/product_api" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/Week7/product_api" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/Week8/.venv" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

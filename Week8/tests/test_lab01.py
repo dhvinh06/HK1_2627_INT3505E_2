@@ -8,9 +8,27 @@ BONUS. Validate a Book response using JSON Schema; add an unknown
        field to a *copy* of the response and assert ValidationError.
 
 Useful imports:
-    from jsonschema import validate, ValidationError
-    import pytest
-    from tools import get_book_schema
 
 Do not depend on test execution order. Fixtures: client, app, sample_book.
 """
+from jsonschema import validate, ValidationError
+import pytest
+from tools import get_book_schema
+
+
+def test_get_books_empty(client):
+    r = client.get("/books")
+    assert r.status_code == 200
+    assert r.get_json() == []
+
+def test_get_books_not_found(client):
+    r = client.get("/books/{9999}")
+    assert r.status_code == 404
+    assert r.get_json() == {"NOT_FOUND"}
+
+def test_post_book(client):
+    r = client.post("/books",json ={"author":"abc"})
+    assert r.status_code =400
+    body = r.get_json()
+    fields = {e["field"] for e in body["errors"]}
+    assert "title" in fields
