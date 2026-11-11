@@ -22,13 +22,21 @@ def test_get_books_empty(client):
     assert r.get_json() == []
 
 def test_get_books_not_found(client):
-    r = client.get("/books/{9999}")
+    r = client.get("/books/9999")
     assert r.status_code == 404
     assert r.get_json() == {"NOT_FOUND"}
 
 def test_post_book(client):
     r = client.post("/books",json ={"author":"abc"})
-    assert r.status_code =400
+    assert r.status_code == 400
     body = r.get_json()
     fields = {e["field"] for e in body["errors"]}
     assert "title" in fields
+
+
+def test_delete_then_get_returns_404(client, sample_book):
+    r = client.delete(f"/books/{sample_book}")
+    assert r.status_code == 204
+
+    r = client.get(f"/books/{sample_book}")
+    assert r.status_code == 404
