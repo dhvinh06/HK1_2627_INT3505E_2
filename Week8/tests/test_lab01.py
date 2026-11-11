@@ -24,7 +24,7 @@ def test_get_books_empty(client):
 def test_get_books_not_found(client):
     r = client.get("/books/9999")
     assert r.status_code == 404
-    assert r.get_json() == {"NOT_FOUND"}
+    assert r.get_json()["code"] == "NOT_FOUND"
 
 def test_post_book(client):
     r = client.post("/books",json ={"author":"abc"})
