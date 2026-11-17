@@ -1,0 +1,10 @@
+# Local dependencies and caches; keep generated verification reports available.
+node_modules/
+.npm-cache/
+.venv/
+__pycache__/
+.pytest_cache/
+.lab3-pytest-tmp/
+
+# Local development database, not source code.
+instance/
