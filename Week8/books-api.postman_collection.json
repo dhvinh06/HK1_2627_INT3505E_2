@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Books API — Lab08 Starter",
-    "description": "Lab 3: add error-cases/ folder with POST missing title and GET missing id. Collection currently contains happy paths only.",
+    "name": "Books API \u2014 Lab08 Starter",
+    "description": "Lab 3: Newman-ready Books API checks. Run books in order (list, create, read, replace, delete), followed by error-cases. Configuration: environment base_url; execution state: collection book_id. POST omits ISBN to avoid uniqueness conflicts between runs.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -9,7 +9,7 @@
       "name": "books",
       "item": [
         {
-          "name": "GET /books — initial list",
+          "name": "GET /books \u2014 initial list",
           "request": {
             "method": "GET",
             "header": [],
@@ -29,15 +29,25 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"body is array\", () => pm.expect(pm.response.json()).to.be.an(\"array\"));"
+                  "pm.test(\"List returns 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"List is an array of book objects\", () => {",
+                  "    const books = pm.response.json();",
+                  "    pm.expect(books).to.be.an(\"array\");",
+                  "    books.forEach(book => {",
+                  "        pm.expect(book).to.have.all.keys(\"id\", \"title\", \"author\", \"year\", \"isbn\");",
+                  "        pm.expect(Number.isInteger(book.id)).to.eql(true);",
+                  "        pm.expect(book.id).to.be.above(0);",
+                  "        pm.expect(book.title).to.be.a(\"string\").and.not.empty;",
+                  "        pm.expect(book.author).to.be.a(\"string\").and.not.empty;",
+                  "    });",
+                  "});"
                 ]
               }
             }
           ]
         },
         {
-          "name": "POST /books — create",
+          "name": "POST /books \u2014 create",
           "request": {
             "method": "POST",
             "header": [
@@ -67,20 +77,41 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.unset(\"book_id\");"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"201 Created\", () => pm.response.to.have.status(201));",
-                  "pm.test(\"positive id\", () => pm.expect(pm.response.json().id).to.be.above(0));",
-                  "if (pm.response.code === 201) pm.collectionVariables.set(\"book_id\", pm.response.json().id);"
+                  "pm.test(\"Create returns 201 Created\", () => pm.response.to.have.status(201));",
+                  "pm.test(\"Created book has a positive integer id and saves book_id\", () => {",
+                  "    const book = pm.response.json();",
+                  "    pm.expect(Number.isInteger(book.id)).to.eql(true);",
+                  "    pm.expect(book.id).to.be.above(0);",
+                  "    if (pm.response.code === 201) pm.collectionVariables.set(\"book_id\", book.id);",
+                  "});",
+                  "pm.test(\"Created book matches the submitted values\", () => {",
+                  "    const book = pm.response.json();",
+                  "    pm.expect(book).to.have.all.keys(\"id\", \"title\", \"author\", \"year\", \"isbn\");",
+                  "    pm.expect(book).to.include({title: \"DDIA\", author: \"Kleppmann\", year: 2017, isbn: null});",
+                  "});",
+                  "pm.test(\"Create supplies the resource Location\", () => {",
+                  "    pm.expect(pm.response.headers.get(\"Location\")).to.eql(\"/books/\" + pm.response.json().id);",
+                  "});"
                 ]
               }
             }
           ]
         },
         {
-          "name": "GET /books/{id} — read",
+          "name": "GET /books/{id} \u2014 read",
           "request": {
             "method": "GET",
             "header": [],
@@ -101,15 +132,20 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"expected fields\", () => pm.expect(pm.response.json()).to.have.all.keys(\"id\", \"title\", \"author\", \"year\", \"isbn\"));"
+                  "pm.test(\"Read returns 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Read returns the created book and its values\", () => {",
+                  "    pm.expect(pm.response.json()).to.deep.eql({",
+                  "        id: Number(pm.collectionVariables.get(\"book_id\")),",
+                  "        title: \"DDIA\", author: \"Kleppmann\", year: 2017, isbn: null",
+                  "    });",
+                  "});"
                 ]
               }
             }
           ]
         },
         {
-          "name": "PUT /books/{id} — replace",
+          "name": "PUT /books/{id} \u2014 replace",
           "request": {
             "method": "PUT",
             "header": [
@@ -144,15 +180,20 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"updated title\", () => pm.expect(pm.response.json().title).to.eql(\"DDIA revised\"));"
+                  "pm.test(\"Replace returns 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Replace keeps the id and returns the updated values\", () => {",
+                  "    pm.expect(pm.response.json()).to.deep.eql({",
+                  "        id: Number(pm.collectionVariables.get(\"book_id\")),",
+                  "        title: \"DDIA revised\", author: \"Kleppmann\", year: 2017, isbn: null",
+                  "    });",
+                  "});"
                 ]
               }
             }
           ]
         },
         {
-          "name": "DELETE /books/{id} — delete",
+          "name": "DELETE /books/{id} \u2014 delete",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -173,8 +214,97 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"204 No Content\", () => pm.response.to.have.status(204));",
-                  "pm.test(\"empty body\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+                  "pm.test(\"Delete returns 204 No Content\", () => pm.response.to.have.status(204));",
+                  "pm.test(\"Delete returns an empty response body\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "error-cases",
+      "item": [
+        {
+          "name": "POST /books - missing title",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/books",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "books"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"author\": \"Kleppmann\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Missing title returns 400 Bad Request\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"Missing title returns the validation error contract\", () => {",
+                  "    const error = pm.response.json();",
+                  "    pm.expect(error.code).to.eql(\"VALIDATION_ERROR\");",
+                  "    pm.expect(error.message).to.eql(\"Invalid book data\");",
+                  "});",
+                  "pm.test(\"Validation details identify the missing title\", () => {",
+                  "    const errors = pm.response.json().errors;",
+                  "    pm.expect(errors).to.be.an(\"array\").and.not.empty;",
+                  "    const titleError = errors.find(error => error.field === \"title\");",
+                  "    pm.expect(titleError).to.be.an(\"object\");",
+                  "    pm.expect(titleError.message).to.be.a(\"string\").and.match(/missing|required/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /books/9999 - not found",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/books/9999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "books",
+                "9999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Missing book returns 404 Not Found\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"Missing book returns NOT_FOUND and its message\", () => {",
+                  "    pm.expect(pm.response.json()).to.include({code: \"NOT_FOUND\", message: \"Book not found\"});",
+                  "});"
                 ]
               }
             }
