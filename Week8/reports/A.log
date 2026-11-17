@@ -1,0 +1,4 @@
+[2026-11-18 00:27:50,644] DESKTOP-J8BUANB/INFO/locust.main: Starting Locust 2.47.0
+[2026-11-18 00:27:50,646] DESKTOP-J8BUANB/INFO/locust.main: Run time limit set to 30 seconds
+[2026-11-18 00:27:50,647] DESKTOP-J8BUANB/INFO/locust.runners: Ramping to 10 users at a rate of 2.00 per second
+[2026-11-18 00:27:54,677] DESKTOP-J8BUANB/INFO/locust.runners: All users spawned: {"BooksUser": 10} (10 total users)

@@ -207,21 +207,91 @@ access-control rule; administrator privileges were not needed to resolve it.
 pytest temporary directories and the local SQLite database. These reusable
 directories are left in place; the real JUnit report and CLI log are not ignored.
 
-## 5. Lab 4 — Locust
+## 5. Lab 4 - Locust
 
-`performance/locustfile.py` là baseline có weighted tasks; `performance/locustfile_realistic.py` minh hoạ flow có state và demo login. Chạy API trong terminal 1; terminal 2:
+Keep using the existing `performance/locustfile.py` and `performance/analysis.md`;
+there are no duplicate root implementations. The optional stateful demo in
+`performance/locustfile_realistic.py` is unchanged.
 
-```bash
-mkdir -p reports
-locust -f performance/locustfile.py --headless -H http://127.0.0.1:5000 \
-  -u 10 -r 2 -t 30s --html reports/A.html
-locust -f performance/locustfile.py --headless -H http://127.0.0.1:5000 \
-  -u 50 -r 5 -t 60s --html reports/B.html
-locust -f performance/locustfile.py --headless -H http://127.0.0.1:5000 \
-  -u 200 -r 50 -t 30s --html reports/C.html
+Run from **Week8**, selecting an environment with the dependencies installed:
+
+```powershell
+$pythonExe = '..\.venv\Scripts\python.exe'
+# Alternatively: '.\.venv\Scripts\python.exe'
+& $pythonExe -m pip install -r requirements.txt
 ```
 
-Hoàn thiện TODO `search_by_year` và nếu tạo 1% failure giả lập, **ghi rõ** đó là HTTP 500 do server phát hay client-side `response.failure()` của Locust. Điền `performance/analysis.md` bằng kết quả **đo thực tế**; báo cáo p95, failure rate, RPS, nhận xét giới hạn phép đo. Load test chạy Flask development server + SQLite chỉ có ý nghĩa thực hành, không thể khẳng định SLO production.
+Locust is already included in `requirements.txt`. Start the existing API in
+terminal 1:
+
+```powershell
+New-Item -ItemType Directory -Force instance | Out-Null
+& $pythonExe -B -m app --port 5000
+```
+
+In terminal 2, set `$pythonExe` again, then run **sequentially**:
+
+```powershell
+& $pythonExe -B -m locust -f performance/locustfile.py --headless -u 10 -r 2 -t 30s --host http://127.0.0.1:5000 --stop-timeout 10 --html reports/A.html --csv reports/A
+& $pythonExe -B -m locust -f performance/locustfile.py --headless -u 50 -r 5 -t 60s --host http://127.0.0.1:5000 --stop-timeout 10 --html reports/B.html --csv reports/B
+& $pythonExe -B -m locust -f performance/locustfile.py --headless -u 200 -r 50 -t 30s --host http://127.0.0.1:5000 --stop-timeout 10 --html reports/C.html --csv reports/C
+```
+
+Archive existing partial `reports/A*` outputs before retrying A. Never replace
+an earlier legitimate report without preserving it. `--stop-timeout 10` allows
+in-flight work and cleanup after the requested active duration.
+
+Alternatively, `performance/run_load_tests.py` manages API startup/readiness,
+a 5-user/6-second preflight, A/B/C in sequence, and API shutdown. It refuses to
+overwrite existing outputs. Its API child blocks external Python socket/DNS
+access before importing the unchanged app. Stop any existing API on port 5000
+and preserve/archive previous run outputs first:
+
+```powershell
+& $pythonExe -B performance/run_load_tests.py
+```
+
+**Execution status:** preflight completed successfully. A started but was
+interrupted when automatic approval review rejected a connection to an external
+telemetry host with an unknown payload, despite the API child's network guard.
+B and C were not started. No official A/B/C HTML report was produced. This
+execution environment remains blocked; no further server startup was attempted.
+The initial `smoke.*` connection-failure outputs and the successful `preflight.*`
+outputs are preserved separately. See `performance/analysis.md` for actual data.
+
+Tasks are list/read/search/create with weights **3/2/2/1** and waits of **1-3 s**.
+Each user creates and reads its own seed book and deletes it on stop. The create
+task uses a UUID title, omits unique ISBN and deletes its new book. Setup/cleanup
+have separate request names and are included in aggregate statistics. Abrupt
+process termination can prevent cleanup; inspect pending ids/database ownership
+before removing interrupted-run test data. Unrelated books are never deleted.
+
+`search_by_year(year=2017)` uses the existing `GET /books?year=2017` filter.
+After validating a genuine HTTP 200 response, every 100th valid search per process
+is marked `SYNTHETIC_HTTP_500` with `response.failure()`. The server still returned
+200. Among N valid searches there are exactly floor(N/100) injections; fewer than
+100 valid searches inject none. The failure percentage among *all* requests is
+lower because list/read/create/setup/cleanup also run. Real HTTP failures,
+timeouts and invalid JSON are checked before injection and never masked.
+
+A run containing synthetic failures normally exits **1**; do not suppress it.
+Inspect `*_failures.csv` and `*_diagnostics.json` to separate synthetic failures,
+actual server errors, transport failures and contract failures. Valid
+`404`/`NOT_FOUND` responses are expected business outcomes and counted separately.
+
+Reports are genuine Locust HTML (`reports/A.html`, `B.html`, `C.html` after
+successful completion), periodic `*_stats.csv`/`*_stats_history.csv`, and failure
+CSV files. At shutdown the load file exports final Locust in-memory aggregate
+and endpoint statistics in `*_diagnostics.json`, including remaining owned ids.
+The managed launcher also records commands/process exit codes in
+`reports/run_summary.json` and server output in `reports/lab4-api.log`.
+
+CSV snapshots can predate final cleanup; use final HTML/diagnostics for totals.
+**p95/p99** bound approximately 95%/99% of measured response times; Locust rounds
+percentiles. **RPS** is requests per second; **failure rate** is failed/total
+requests, including explicit synthetic failures. Compare aggregate p95 with
+**300 ms**, then inspect endpoint rows. Local Flask development server + SQLite
+measurements do not establish production capacity.
 
 ## 6. Cấu trúc thư mục
 

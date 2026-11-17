@@ -1,0 +1,31 @@
+[2026-11-18 00:24:02,085] DESKTOP-J8BUANB/INFO/locust.main: Starting Locust 2.47.0
+[2026-11-18 00:24:02,089] DESKTOP-J8BUANB/INFO/locust.main: Run time limit set to 6 seconds
+[2026-11-18 00:24:02,091] DESKTOP-J8BUANB/INFO/locust.runners: Ramping to 5 users at a rate of 5.00 per second
+[2026-11-18 00:24:02,091] DESKTOP-J8BUANB/INFO/locust.runners: All users spawned: {"BooksUser": 5} (5 total users)
+[2026-11-18 00:24:07,506] DESKTOP-J8BUANB/INFO/locust.main: --run-time limit reached, shutting down
+[2026-11-18 00:24:07,671] DESKTOP-J8BUANB/INFO/locust.main: Shutting down (exit code 1)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+GET      GET /books                                                                         4   4(100.00%) |   2023    2015    2032   2015 |    0.97        0.97
+POST     POST /books                                                                        1   1(100.00%) |   2017    2017    2017   2017 |    0.24        0.24
+POST     POST /books (setup)                                                                5   5(100.00%) |   2060    2057    2067   2067 |    1.22        1.22
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                        10  10(100.00%) |   2041    2015    2067   2067 |    2.44        2.44
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+GET      GET /books                                                                           2000   2000   2000   2000   2000   2000   2000   2000   2000   2000   2000      4
+POST     POST /books                                                                          2000   2000   2000   2000   2000   2000   2000   2000   2000   2000   2000      1
+POST     POST /books (setup)                                                                  2100   2100   2100   2100   2100   2100   2100   2100   2100   2100   2100      5
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                           2100   2100   2100   2100   2100   2100   2100   2100   2100   2100   2100     10
+
+Error report
+# occurrences      Error                                                                                               
+------------------|---------------------------------------------------------------------------------------------------------------------------------------------
+5                  POST POST /books (setup): TRANSPORT_ERROR: HTTPConnectionPool(host='127.0.0.1', port=5000): Max retries exceeded with url: /books (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=5000): Failed to establish a new connection: [Errno 10061] [WinError 10061] No connection could be made because the target machine actively refused it."))
+4                  GET GET /books: TRANSPORT_ERROR: HTTPConnectionPool(host='127.0.0.1', port=5000): Max retries exceeded with url: /books (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=5000): Failed to establish a new connection: [Errno 10061] [WinError 10061] No connection could be made because the target machine actively refused it."))
+1                  POST POST /books: TRANSPORT_ERROR: HTTPConnectionPool(host='127.0.0.1', port=5000): Max retries exceeded with url: /books (Caused by NewConnectionError("HTTPConnection(host='127.0.0.1', port=5000): Failed to establish a new connection: [Errno 10061] [WinError 10061] No connection could be made because the target machine actively refused it."))
+------------------|---------------------------------------------------------------------------------------------------------------------------------------------
+

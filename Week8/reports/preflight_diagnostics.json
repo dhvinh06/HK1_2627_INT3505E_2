@@ -1,0 +1,110 @@
+{
+  "endpoints": {
+    "POST /books (setup)": {
+      "http_201": 5
+    },
+    "POST /books": {
+      "http_201": 2
+    },
+    "DELETE /books/{id}": {
+      "http_204": 2
+    },
+    "GET /books/{id}": {
+      "http_200": 7
+    },
+    "GET /books?year={year}": {
+      "http_200": 3
+    },
+    "GET /books": {
+      "http_200": 6
+    },
+    "DELETE /books/{id} (cleanup)": {
+      "http_204": 5
+    }
+  },
+  "remaining_owned_ids": [],
+  "simulation": "Every 100th valid search; real HTTP status remains 200",
+  "aggregate": {
+    "requests": 30,
+    "failures": 0,
+    "failure_rate_percent": 0.0,
+    "average_ms": 26.32872333342675,
+    "p50_ms": 11,
+    "p95_ms": 110,
+    "p99_ms": 120,
+    "rps": 5.334486468886961
+  },
+  "endpoint_stats": {
+    "DELETE /books/{id}": {
+      "requests": 2,
+      "failures": 0,
+      "failure_rate_percent": 0.0,
+      "average_ms": 11.415650002163602,
+      "p50_ms": 11.720600003172876,
+      "p95_ms": 12,
+      "p99_ms": 12,
+      "rps": 0.35563243125913074
+    },
+    "DELETE /books/{id} (cleanup)": {
+      "requests": 5,
+      "failures": 0,
+      "failure_rate_percent": 0.0,
+      "average_ms": 45.029580000118585,
+      "p50_ms": 44,
+      "p95_ms": 76,
+      "p99_ms": 76,
+      "rps": 0.8890810781478269
+    },
+    "GET /books": {
+      "requests": 6,
+      "failures": 0,
+      "failure_rate_percent": 0.0,
+      "average_ms": 4.162199999579268,
+      "p50_ms": 4,
+      "p95_ms": 6,
+      "p99_ms": 6,
+      "rps": 1.0668972937773922
+    },
+    "GET /books/{id}": {
+      "requests": 7,
+      "failures": 0,
+      "failure_rate_percent": 0.0,
+      "average_ms": 11.723442857536222,
+      "p50_ms": 4,
+      "p95_ms": 60,
+      "p99_ms": 60,
+      "rps": 1.2447135094069577
+    },
+    "GET /books?year={year}": {
+      "requests": 3,
+      "failures": 0,
+      "failure_rate_percent": 0.0,
+      "average_ms": 4.796466666448396,
+      "p50_ms": 4,
+      "p95_ms": 7,
+      "p99_ms": 7,
+      "rps": 0.5334486468886961
+    },
+    "POST /books": {
+      "requests": 2,
+      "failures": 0,
+      "failure_rate_percent": 0.0,
+      "average_ms": 11.968300001171883,
+      "p50_ms": 12,
+      "p95_ms": 12,
+      "p99_ms": 12,
+      "rps": 0.35563243125913074
+    },
+    "POST /books (setup)": {
+      "requests": 5,
+      "failures": 0,
+      "failure_rate_percent": 0.0,
+      "average_ms": 79.30383999919286,
+      "p50_ms": 98,
+      "p95_ms": 120,
+      "p99_ms": 120,
+      "rps": 0.8890810781478269
+    }
+  },
+  "statistics_source": "Final statistics embedded in genuine reports/preflight.html"
+}

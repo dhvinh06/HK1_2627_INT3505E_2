@@ -1,0 +1,17 @@
+{
+  "reason": "Official A interrupted by automatic approval review; API no longer listening",
+  "ownership_check": "Exact author locust-lab4, title Locust + 32 hex UUID, year 2017, null ISBN",
+  "deleted_ids": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "remaining_lab4_books": 0
+}

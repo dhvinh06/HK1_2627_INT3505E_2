@@ -1,0 +1,31 @@
+[2026-11-18 00:27:43,623] DESKTOP-J8BUANB/INFO/locust.main: Starting Locust 2.47.0
+[2026-11-18 00:27:43,624] DESKTOP-J8BUANB/INFO/locust.main: Run time limit set to 6 seconds
+[2026-11-18 00:27:43,626] DESKTOP-J8BUANB/INFO/locust.runners: Ramping to 5 users at a rate of 5.00 per second
+[2026-11-18 00:27:43,626] DESKTOP-J8BUANB/INFO/locust.runners: All users spawned: {"BooksUser": 5} (5 total users)
+[2026-11-18 00:27:49,071] DESKTOP-J8BUANB/INFO/locust.main: --run-time limit reached, shutting down
+[2026-11-18 00:27:49,295] DESKTOP-J8BUANB/INFO/locust.main: Shutting down (exit code 0)
+Type     Name                                                                          # reqs      # fails |    Avg     Min     Max    Med |   req/s  failures/s
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+DELETE   DELETE /books/{id}                                                                 2     0(0.00%) |     11      11      11     11 |    0.36        0.00
+DELETE   DELETE /books/{id} (cleanup)                                                       5     0(0.00%) |     45      18      76     44 |    0.89        0.00
+GET      GET /books                                                                         6     0(0.00%) |      4       3       5      4 |    1.07        0.00
+GET      GET /books/{id}                                                                    7     0(0.00%) |     11       3      59      4 |    1.24        0.00
+GET      GET /books?year={year}                                                             3     0(0.00%) |      4       3       6      4 |    0.53        0.00
+POST     POST /books                                                                        2     0(0.00%) |     11      11      12     12 |    0.36        0.00
+POST     POST /books (setup)                                                                5     0(0.00%) |     79      24     123     98 |    0.89        0.00
+--------|----------------------------------------------------------------------------|-------|-------------|-------|-------|-------|-------|--------|-----------
+         Aggregated                                                                        30     0(0.00%) |     26       3     123     11 |    5.33        0.00
+
+Response time percentiles (approximated)
+Type     Name                                                                                  50%    66%    75%    80%    90%    95%    98%    99%  99.9% 99.99%   100% # reqs
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+DELETE   DELETE /books/{id}                                                                     12     12     12     12     12     12     12     12     12     12     12      2
+DELETE   DELETE /books/{id} (cleanup)                                                           44     59     59     76     76     76     76     76     76     76     76      5
+GET      GET /books                                                                              4      4      4      4      6      6      6      6      6      6      6      6
+GET      GET /books/{id}                                                                         4      4      4      4     60     60     60     60     60     60     60      7
+GET      GET /books?year={year}                                                                  4      4      7      7      7      7      7      7      7      7      7      3
+POST     POST /books                                                                            12     12     12     12     12     12     12     12     12     12     12      2
+POST     POST /books (setup)                                                                    98    110    110    120    120    120    120    120    120    120    120      5
+--------|--------------------------------------------------------------------------------|--------|------|------|------|------|------|------|------|------|------|------|------
+         Aggregated                                                                             11     18     44     59     98    110    120    120    120    120    120     30
+

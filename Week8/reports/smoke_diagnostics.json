@@ -1,0 +1,18 @@
+{
+  "endpoints": {
+    "POST /books (setup)": {
+      "http_0": 5,
+      "transport_failures": 5
+    },
+    "GET /books": {
+      "http_0": 4,
+      "transport_failures": 4
+    },
+    "POST /books": {
+      "http_0": 1,
+      "transport_failures": 1
+    }
+  },
+  "remaining_owned_ids": [],
+  "simulation": "Every 100th valid search; real HTTP status remains 200"
+}
