@@ -1,0 +1,106 @@
+openapi: 3.0.3
+
+info:
+  title: Users API
+  version: 2.0.0
+  description: API Versioning với Flask Blueprint
+
+servers:
+  - url: http://localhost:5000
+
+paths:
+  /api/v1/users/{uid}:
+    get:
+      summary: Get user (v1)
+      deprecated: true
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserV1"
+        "404":
+          description: User not found
+
+  /api/v2/users/{uid}:
+    get:
+      summary: Get user (v2)
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserV2"
+        "404":
+          description: User not found
+
+  /api/v2/users/:
+    post:
+      summary: Create new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUser"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserV2"
+        "400":
+          description: Missing required fields
+
+components:
+  schemas:
+    UserV1:
+      type: object
+      properties:
+        id:
+          type: integer
+        full_name:
+          type: string
+        email:
+          type: string
+
+    UserV2:
+      type: object
+      properties:
+        id:
+          type: integer
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
+
+    CreateUser:
+      type: object
+      required:
+        - first_name
+        - last_name
+        - email
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        email:
+          type: string
